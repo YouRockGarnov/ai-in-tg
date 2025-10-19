@@ -6,8 +6,7 @@ from openai import OpenAI
 
 load_dotenv(override=True)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-print("OPENAI_API_KEY:", OPENAI_API_KEY)
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5")
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 def transcribe_audio(ogg_path: str, wav_path: str) -> str:

@@ -3,7 +3,7 @@ import logging
 from telegram import Update, Voice
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 from dotenv import load_dotenv
-from app.openai_client import transcribe_audio, chat_with_gpt
+from app.openai import transcribe_audio, chat_with_gpt
 from app.notion import save_message, get_recent_history
 
 load_dotenv(override=True)
