@@ -12,12 +12,15 @@ TG_BOT_USERNAME = os.getenv("TG_BOT_USERNAME")
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 logger = logging.getLogger(__name__)
 
+
 def is_group_chat(update: Update) -> bool:
     return update.effective_chat.type in ["group", "supergroup"]
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"/start command from chat_id={update.effective_chat.id}, user_id={update.effective_user.id}")
     await update.message.reply_text("Hello! I'm your AI assistant. Send a text or voice message.")
+
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
@@ -48,6 +51,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     save_message(chat_id, reply, raw_message={"reply_to": user_text, "reply": reply})
     await update.message.reply_text(reply)
 
+
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     voice: Voice = update.message.voice
     file = await context.bot.get_file(voice.file_id)
@@ -66,11 +70,44 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🗣️ *You said:* {text}\n\n🤖 *ChatGPT says:* {reply}", parse_mode='Markdown')
 
 
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle incoming photos: download highest-resolution photo, save to disk, store metadata in Notion, and acknowledge."""
+    photos = update.message.photo
+    if not photos:
+        return
+
+    # Telegram sends multiple PhotoSize objects; last is largest
+    photo = photos[-1]
+    file = await context.bot.get_file(photo.file_id)
+    file_path = f"photo_{photo.file_id}.jpg"
+    logger.info(f"Downloading photo file_id={photo.file_id} to {file_path}")
+    await file.download_to_drive(file_path)
+
+    chat_id = str(update.effective_chat.id)
+    caption = update.message.caption or ""
+    saved_content = f"[Image saved: {file_path}] {caption}"
+    save_message(chat_id, saved_content, raw_message=update.message.to_dict())
+
+    # Optionally, include recent history and let GPT know there's an image
+    history = get_recent_history(chat_id)
+    # include a short mention that the user sent an image; actual image understanding would require vision APIs
+    gpt_messages = ([{"role": "user", "content": h["content"]} for h in history]
+                    + [{"role": "user", "content": f"User sent an image: {caption or file_path}"}])
+    try:
+        reply = chat_with_gpt(gpt_messages)
+        save_message(chat_id, reply, raw_message={"reply_to": saved_content, "reply": reply})
+        await update.message.reply_text(f"📷 Got the image. {reply}")
+    except Exception:
+        logger.exception("Error calling chat_with_gpt for image")
+        await update.message.reply_text("📷 Image received and saved.")
+
+
 def main():
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     app.add_handler(MessageHandler(filters.VOICE, handle_voice))
+    app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     logger.info("Bot started. Waiting for messages...")
     app.run_polling()
 

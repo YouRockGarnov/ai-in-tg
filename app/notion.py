@@ -9,8 +9,10 @@ NOTION_TOKEN = os.getenv("NOTION_TOKEN")
 NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
 notion = Client(auth=NOTION_TOKEN)
 
+
 print("NOTION_TOKEN:", NOTION_TOKEN)
 print("NOTION_DATABASE_ID:", NOTION_DATABASE_ID)
+
 
 def save_message(chat_id: str, content: str, raw_message: Optional[dict] = None) -> None:
     """
@@ -27,6 +29,7 @@ def save_message(chat_id: str, content: str, raw_message: Optional[dict] = None)
         parent={"database_id": NOTION_DATABASE_ID},
         properties=properties
     )
+
 
 def get_recent_history(chat_id: str, limit: int = 10) -> List[Dict[str, Any]]:
     """
